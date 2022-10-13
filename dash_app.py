@@ -16,43 +16,7 @@ import networkx as nx
 
 import plotly.express as px
 
-def MAP(x,level):
-  return nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
-
-def get_start_level(io_deepest,selected_level="16"):
-  io_newLevel = io_deepest.copy()
-
-  # convert to selected level
-
-  if selected_level == "180":
-    return io_newLevel
-  else:
-    io_newLevel[f'COLUMN_{selected_level}'] = io_newLevel['COLUMN'].apply(MAP, level=selected_level)
-    io_newLevel[f'ROW_{selected_level}'] = io_newLevel['ROW'].apply(MAP, level=selected_level)
-  
-
-  io_newLevel = io_newLevel[[f'COLUMN_{selected_level}',f'ROW_{selected_level}','weight']]
-  io_newLevel = io_newLevel.groupby(by=[f'COLUMN_{selected_level}',f'ROW_{selected_level}'],as_index=False).sum()
-  io_newLevel['Buyer'] = io_newLevel[f'COLUMN_{selected_level}']
-  io_newLevel['Seller'] = io_newLevel[f'ROW_{selected_level}']
-
-  io_newLevel.drop_duplicates(inplace=True)
-
-  scaler = MinMaxScaler((1,5))
-  scaler_outlier = MinMaxScaler((5,6))
-
-  # filter outlier
-  Q1 = io_newLevel['weight'].quantile(0.25)
-  Q3 = io_newLevel['weight'].quantile(0.75)
-  IQR = Q3 - Q1    #IQR is interquartile range. 
-
-  filter = (io_newLevel['weight'] >= Q1 - 1.5 * IQR) & (io_newLevel['weight'] <= Q3 + 1.5 *IQR)
-  io_newLevel["weight_norm"] = 0
-
-  io_newLevel.loc[filter,"weight_norm"] = scaler.fit_transform(io_newLevel.loc[filter][["weight"]])
-  io_newLevel.loc[~filter,"weight_norm"] = scaler_outlier.fit_transform(io_newLevel.loc[~filter][["weight"]])
-
-  return io_newLevel
+from utils.util import MAP, get_start_level
 
 # get data
 io_2015 = pd.read_excel('./io_data/IO Table 2010.xlsx', dtype={'ROW':'object','COLUMN':'object'})
