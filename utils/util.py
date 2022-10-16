@@ -51,3 +51,15 @@ def get_start_level(io_deepest,selected_level="16"):
   io_newLevel.loc[~filter,"weight_norm"] = scaler_outlier.fit_transform(io_newLevel.loc[~filter][["weight"]])
 
   return io_newLevel
+
+
+def get_all_levels(id_deepest,cyto_node_dict):
+  all_level_df = nodes[nodes["id"] == id_deepest][["id","id58","id26","id16"]]
+  all_level_df = all_level_df.iloc[0,:]
+  all_level_list = all_level_df.to_list()
+
+  diff = np.setdiff1d(all_level_list,list(cyto_node_dict.keys()))
+  res = np.setdiff1d(all_level_list,diff)
+  res = res[0]
+  
+  return res

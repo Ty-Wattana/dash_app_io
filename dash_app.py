@@ -16,7 +16,7 @@ import networkx as nx
 
 import plotly.express as px
 
-from utils.util import MAP, get_start_level
+from utils.util import MAP, get_start_level, get_all_levels
 
 # get data
 io_2015 = pd.read_excel('./io_data/IO Table 2010.xlsx', dtype={'ROW':'object','COLUMN':'object'})
@@ -404,25 +404,40 @@ def expandElement(node,start_level,elements):
     selected_id = node["data"]["id"]
     selected_level = node["data"]["level"]
 
+    if selected_level not in ["16","26","58"]:
+        return default_stylesheet,elements
+
     expandedID_deepest = list(nodes.loc[nodes[f"id{selected_level}"] == selected_id,"id"])
     
     io_selected = io_2015.copy()
     node_selected = nodes.copy()
 
     # delete selected node and associated links from cytoscape element
-    new_cytoElement = elements
+    new_cytoElement = elements.copy()
 
     for c in new_cytoElement: # loop to delete
       if selected_id in c['data'].values():
         new_cytoElement.remove(c)
+
+    cyto_node_dict = {}
+
+    last_node_index = 0
+
+    for element in new_cytoElement:
+        if 'source' not in element["data"]:
+            cyto_node_dict[element["data"]["id"]] = element["data"]["label"]
+        else:
+            last_node_index += new_cytoElement.index(element)
+            last_node_index -= 1
+            break
 
     # get selected node deeper level data
     if selected_level == "16":
       io_selected = io_selected[(io_selected["COLUMN"].isin(expandedID_deepest)) | (io_selected["ROW"].isin(expandedID_deepest))]
 
       # convert non-selected nodes
-      io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(MAP, level="16")
-      io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(MAP, level="16")
+      io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
+      io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
 
       # convert selected nodes
 
@@ -434,7 +449,41 @@ def expandElement(node,start_level,elements):
       node_selected.rename(columns={"id26":"id","name26":"name"},inplace=True)
       node_selected.drop_duplicates(inplace=True)
 
-    # elif selected_level == "26":
+    elif selected_level == "26":
+      io_selected = io_selected[(io_selected["COLUMN"].isin(expandedID_deepest)) | (io_selected["ROW"].isin(expandedID_deepest))]
+
+      # convert non-selected nodes
+      io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
+      io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
+
+      # convert selected nodes
+
+      io_selected.loc[(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(MAP, level="58")
+      io_selected.loc[(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(MAP, level="58")
+
+      node_selected = node_selected[node_selected["id"].isin(expandedID_deepest)]
+      node_selected = node_selected[["id58","name58"]]
+      node_selected.rename(columns={"id58":"id","name58":"name"},inplace=True)
+      node_selected.drop_duplicates(inplace=True)
+    
+    elif selected_level == "58":
+      io_selected = io_selected[(io_selected["COLUMN"].isin(expandedID_deepest)) | (io_selected["ROW"].isin(expandedID_deepest))]
+
+      # convert non-selected nodes
+      io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[~(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
+      io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[~(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(get_all_levels, cyto_node_dict=cyto_node_dict)
+
+      # convert selected nodes
+
+      io_selected.loc[(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"] = io_selected.loc[(io_selected["COLUMN"].isin(expandedID_deepest)),"COLUMN"].apply(MAP, level="")
+      io_selected.loc[(io_selected["ROW"].isin(expandedID_deepest)),"ROW"] = io_selected.loc[(io_selected["ROW"].isin(expandedID_deepest)),"ROW"].apply(MAP, level="")
+
+      node_selected = node_selected[node_selected["id"].isin(expandedID_deepest)]
+      node_selected = node_selected[["id","name"]]
+      node_selected.drop_duplicates(inplace=True)
+
+    else:
+      return default_stylesheet,elements
 
 
     # calculate edge weight
@@ -470,13 +519,21 @@ def expandElement(node,start_level,elements):
 
     # append to old cyto element
 
+    new_node_list = []
+
     for index,row in node_selected.iterrows():
       temp_dict = {}
       temp_dict['data'] = {}
       temp_dict['data']['id'] = row['id']
       temp_dict['data']['label'] = row['name']
+      if len(row['id']) == 2:
+        temp_dict['data']['level'] = "180"
+      else:
+        temp_dict['data']['level'] = row['id'][-2:]
 
-      new_cytoElement.append(temp_dict)
+      new_node_list.append(temp_dict)
+
+    new_cytoElement = new_cytoElement[:last_node_index+1] + new_node_list + new_cytoElement[last_node_index+1:]
 
     for edge in G_start.edges:
       temp_dict = {}
