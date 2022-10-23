@@ -157,3 +157,27 @@ def genSankey(df,cat_cols=[],value_cols='',title='Sankey Diagram'):
        
     fig = dict(data=[data], layout=layout)
     return fig
+
+
+
+empty_fig = {
+    "layout": {
+        "xaxis": {
+            "visible": False
+        },
+        "yaxis": {
+            "visible": False
+        },
+        "annotations": [
+            {
+                "text": "Please Select a Node",
+                "xref": "paper",
+                "yref": "paper",
+                "showarrow": False,
+                "font": {
+                    "size": 28
+                }
+            }
+        ]
+    }
+}
