@@ -228,10 +228,6 @@ app.layout = html.Div([dcc.Tabs([
         dcc.Graph(style={'width':'50%'}, id="node-donut-outflow")
     ],style={'display':"flex"}),
 
-    html.Div(className='adj-metrix', children=[
-        dcc.Graph(style={'width':'100%'})
-    ],style={'display':"flex"}),
-
     html.Div(className='centrailities', children=[
         dcc.Graph(style={'width':'25%'}),
         dcc.Graph(style={'width':'25%'}),
@@ -244,6 +240,12 @@ app.layout = html.Div([dcc.Tabs([
     ],style={'display':"flex"}),
 
     ]),
+
+    html.Div(className='adj-metrix', children=[
+        dcc.Graph(style={'width':'100%'})
+    ],style={'display':"flex"}),
+
+    
     dcc.Tab(label='Temporal Visualization', children=[
         html.H1("Under Development",style={"text-align":"center"})
     ])
@@ -640,7 +642,7 @@ def generate_charts_selectedNode(node,elements):
             return empty_fig, empty_fig, empty_fig
         else:
             # sankey
-            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky ploy of {selected_name}')
+            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky plot of {selected_name}')
 
             sank_fig = go.Figure(sankDict)
 
