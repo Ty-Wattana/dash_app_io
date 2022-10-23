@@ -178,6 +178,18 @@ app.layout = html.Div([dcc.Tabs([
             dcc.Tabs(id='tabs', children=[
               dcc.Tab(label='Control Panel', children=[
                   drc.NamedDropdown(
+                      name='Starting Level',
+                      id='dropdown-level',
+                      options=drc.DropdownOptionsList(
+                          '16',
+                          '26',
+                          '58',
+                          '180'
+                      ),
+                      value='16',
+                      clearable=False
+                  ),
+                  drc.NamedDropdown(
                       name='Layout',
                       id='dropdown-layout',
                       options=drc.DropdownOptionsList(
@@ -199,18 +211,6 @@ app.layout = html.Div([dcc.Tabs([
                           'expansion',
                       ),
                       value='selection',
-                      clearable=False
-                  ),
-                  drc.NamedDropdown(
-                      name='Starting Level',
-                      id='dropdown-level',
-                      options=drc.DropdownOptionsList(
-                          '16',
-                          '26',
-                          '58',
-                          '180'
-                      ),
-                      value='16',
                       clearable=False
                   ),
               ]),
