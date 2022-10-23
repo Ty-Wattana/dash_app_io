@@ -17,7 +17,7 @@ import networkx as nx
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils.util import MAP, get_start_level, get_all_levels, get_edge_df_from_cyto, get_node_name, genSankey
+from utils.util import MAP, get_start_level, get_all_levels, get_edge_df_from_cyto, get_node_name, genSankey, empty_fig
 
 # get data
 io_2015 = pd.read_excel('./io_data/IO Table 2010.xlsx', dtype={'ROW':'object','COLUMN':'object'})
@@ -618,12 +618,14 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
 
 
 @app.callback(Output('node-sanky', 'figure'),
+              Output('node-donut-inflow', 'figure'),
+              Output('node-donut-outflow', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
 def generate_charts_selectedNode(node,elements):
     if not node: # no node selected
-        return {}
+        return empty_fig, empty_fig, empty_fig
     else:
         selected_id = node["data"]["id"]
         selected_name = node["data"]["label"]
@@ -635,13 +637,45 @@ def generate_charts_selectedNode(node,elements):
         df_selected = df_cyto[(df_cyto["Buyer"] == selected_id) | (df_cyto["Seller"] == selected_id)]
 
         if df_selected.shape[0] == 0:
-            return {}
+            return empty_fig, empty_fig, empty_fig
         else:
+            # sankey
             sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky ploy of {selected_name}')
 
-            fig = go.Figure(sankDict)
+            sank_fig = go.Figure(sankDict)
 
-            return fig
+            # donut inflow
+            money_inflow_df = df_selected[df_selected["Seller_name"] == selected_name].groupby(["Buyer_name","Seller_name"]).sum().reset_index()
+
+            money_inflow_df.sort_values("Amount",ascending=False,inplace=True)
+            money_inflow_df.iloc[5:,0] = "Other"
+
+            sum_inflow = money_inflow_df["Amount"].sum()
+            sum_inflow = "{:,}".format(sum_inflow)
+
+            money_inflow_df.rename(columns={"Buyer_name":"Buyer Name",},inplace=True)
+
+            donut_inflow_fig = px.pie(money_inflow_df, values="Amount", names="Buyer Name", hole=.65)
+            donut_inflow_fig.update_layout(title_text=f"Money Inflow of {selected_name}",
+                            annotations=[dict(text=f'฿{sum_inflow}', x=0.5, y=0.5, font_size=20, showarrow=False)])
+
+            # donut outflow
+            money_outflow_df = df_selected[df_selected["Buyer_name"] == selected_name].groupby(["Buyer_name","Seller_name"]).sum().reset_index()
+
+            money_outflow_df.sort_values("Amount",ascending=False,inplace=True)
+            money_outflow_df.iloc[5:,1] = "Other"
+
+            sum_outflow = money_outflow_df["Amount"].sum()
+            sum_outflow = "{:,}".format(sum_outflow)
+
+            money_outflow_df.rename(columns={"Seller_name":"Seller Name",},inplace=True)
+
+            donut_outflow_fig = px.pie(money_outflow_df, values="Amount", names="Seller Name", hole=.65)
+            donut_outflow_fig.update_layout(title_text=f"Money Outflow of {selected_name}",
+                            annotations=[dict(text=f'฿{sum_outflow}', x=0.5, y=0.5, font_size=20, showarrow=False)])
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
