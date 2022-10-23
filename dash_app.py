@@ -15,8 +15,9 @@ import pandas as pd
 import networkx as nx
 
 import plotly.express as px
+import plotly.graph_objects as go
 
-from utils.util import MAP, get_start_level, get_all_levels
+from utils.util import MAP, get_start_level, get_all_levels, get_edge_df_from_cyto, get_node_name, genSankey
 
 # get data
 io_2015 = pd.read_excel('./io_data/IO Table 2010.xlsx', dtype={'ROW':'object','COLUMN':'object'})
@@ -220,7 +221,7 @@ app.layout = html.Div([dcc.Tabs([
 
     html.Div(className='nodeInfo-sankey', children=[
         dcc.Graph(style={'width':'50%'}),
-        dcc.Graph(style={'width':'50%'}),
+        dcc.Graph(style={'width':'50%'}, id="node-sanky"),
     ],style={'display':"flex"}),
 
     html.Div(className='adj-metrix', children=[
@@ -610,8 +611,33 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
             new_cytoElement.append(temp_dict)
         
         return default_stylesheet,new_cytoElement
-        
 
+
+@app.callback(Output('node-sanky', 'figure'),
+              [Input('IO-network', 'tapNode')],
+              [State('IO-network', 'elements')])
+
+def generate_charts_selectedNode(node,elements):
+    if not node: # no node selected
+        return {}
+    else:
+        selected_id = node["data"]["id"]
+        selected_name = node["data"]["label"]
+
+        df_cyto = get_edge_df_from_cyto(elements)
+        df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+        df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+        df_selected = df_cyto[(df_cyto["Buyer"] == selected_id) | (df_cyto["Seller"] == selected_id)]
+
+        if df_selected.shape[0] == 0:
+            return {}
+        else:
+            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky ploy of {selected_name}')
+
+            fig = go.Figure(sankDict)
+
+            return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
