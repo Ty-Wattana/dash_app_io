@@ -220,8 +220,12 @@ app.layout = html.Div([dcc.Tabs([
     ],style = {'display' : 'flex'}),
 
     html.Div(className='nodeInfo-sankey', children=[
-        dcc.Graph(style={'width':'50%'}),
-        dcc.Graph(style={'width':'50%'}, id="node-sanky"),
+        dcc.Graph(style={'width':'100%'}, id="node-sanky"),
+    ],style={'display':"flex"}),
+
+    html.Div(className='nodeInfo-donut', children=[
+        dcc.Graph(style={'width':'50%'}, id="node-donut-inflow"),
+        dcc.Graph(style={'width':'50%'}, id="node-donut-outflow")
     ],style={'display':"flex"}),
 
     html.Div(className='adj-metrix', children=[
