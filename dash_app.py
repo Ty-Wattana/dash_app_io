@@ -242,6 +242,11 @@ app.layout = html.Div([dcc.Tabs([
         dcc.Graph(style={'width':'50%'}, id="pageRank"),
     ],style={'display':"flex"}),
 
+    html.Div(className='closeness-betweeness-centrailities', children=[
+        dcc.Graph(style={'width':'50%'}, id="closeness-centralities"),
+        dcc.Graph(style={'width':'50%'}, id="betweeness-centralities"),
+    ],style={'display':"flex"}),
+
     html.Div(className='cluster', children=[
         dcc.Graph(style={'width':'100%'}),
     ],style={'display':"flex"}),
@@ -633,6 +638,8 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
               Output('out-degree-centrality', 'figure'),
               Output('eigen-vector-centralities', 'figure'),
               Output('pageRank', 'figure'),
+              Output('closeness-centralities', 'figure'),
+              Output('betweeness-centralities', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
@@ -719,7 +726,35 @@ def generate_charts_selectedNode(node,elements):
 
         pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
 
-        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig
+        # defualt chart of closeness centralities
+        
+        closeness_centrality = nx.closeness_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(closeness_centrality.keys()))
+
+        closeness_fig = go.Figure(data=[go.Bar(
+            y=list(closeness_centrality.keys()),
+            x=list(closeness_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        closeness_fig.update_layout(title_text='Closeness Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of betweenes centralities
+        
+        betweenness_centrality = nx.betweenness_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(betweenness_centrality.keys()))
+
+        betweenness_fig = go.Figure(data=[go.Bar(
+            y=list(betweenness_centrality.keys()),
+            x=list(betweenness_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig
     else:
         selected_id = node["data"]["id"]
         selected_name = node["data"]["label"]
@@ -835,7 +870,7 @@ def generate_charts_selectedNode(node,elements):
             
             pagerank = nx.pagerank(G_cyto)
             colors = ['lightslategray',] * (len(pagerank.keys()))
-            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
+            colors[list(pagerank.keys()).index(selected_name)] = 'crimson'
 
             pagerank_fig = go.Figure(data=[go.Bar(
                 y=list(pagerank.keys()),
@@ -846,8 +881,38 @@ def generate_charts_selectedNode(node,elements):
 
             pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
 
+            # closeness centralities
+        
+            closeness_centrality = nx.closeness_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(closeness_centrality.keys()))
+            colors[list(closeness_centrality.keys()).index(selected_name)] = 'crimson'
 
-            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig
+            closeness_fig = go.Figure(data=[go.Bar(
+                y=list(closeness_centrality.keys()),
+                x=list(closeness_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            closeness_fig.update_layout(title_text='Closeness Centralities',yaxis=dict(autorange="reversed"))
+
+            # betweenes centralities
+            
+            betweenness_centrality = nx.betweenness_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(betweenness_centrality.keys()))
+            colors[list(betweenness_centrality.keys()).index(selected_name)] = 'crimson'
+
+            betweenness_fig = go.Figure(data=[go.Bar(
+                y=list(betweenness_centrality.keys()),
+                x=list(betweenness_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
