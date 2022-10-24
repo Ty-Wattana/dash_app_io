@@ -108,6 +108,24 @@ app.layout = html.Div([dcc.Tabs([
                                                       "margin-left": "15px"})
     ],style={'display':"flex"}),
 
+    html.Br(),
+
+    dcc.Slider(1975, 2015,step=None, value=2015, marks={
+            1975:"1975",
+            1980:"1980",
+            1985:"1985",
+            1990:"1990",
+            1995:"1995",
+            1998:"1998",
+            2000:"2000",
+            2005:"2005",
+            2010:"2010",
+            2015:"2015"
+    }
+    ),
+
+    html.Br(),
+
     html.Div(className='network-control-panel', children=[
         cyto.Cytoscape(
             id='IO-network',
@@ -342,6 +360,7 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
         }, {
             'selector': 'edge',
             'style': {
+                "target-arrow-shape": "vee",
                 'opacity': 0.3,
                 "curve-style": "bezier",
                 "width":"data(weight)"
