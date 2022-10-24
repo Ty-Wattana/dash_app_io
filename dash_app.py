@@ -15,8 +15,9 @@ import pandas as pd
 import networkx as nx
 
 import plotly.express as px
+import plotly.graph_objects as go
 
-from utils.util import MAP, get_start_level, get_all_levels
+from utils.util import MAP, get_start_level, get_all_levels, get_edge_df_from_cyto, get_node_name, genSankey, empty_fig
 
 # get data
 io_2015 = pd.read_excel('./io_data/IO Table 2010.xlsx', dtype={'ROW':'object','COLUMN':'object'})
@@ -152,7 +153,7 @@ app.layout = html.Div([dcc.Tabs([
     dcc.Tab(label='Spatial Visualization', children=[
     html.H1("Input-Output Economic Network (2015)",style={"text-align":"center"}),
 
-    html.Div(className='network-stat', children=[
+    html.Div(id='network-stat', children=[
         html.H3("Network Diameter: ",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
                                             "margin-left": "15px"}),
         html.H3("Network Density: ",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
@@ -177,6 +178,18 @@ app.layout = html.Div([dcc.Tabs([
             dcc.Tabs(id='tabs', children=[
               dcc.Tab(label='Control Panel', children=[
                   drc.NamedDropdown(
+                      name='Starting Level',
+                      id='dropdown-level',
+                      options=drc.DropdownOptionsList(
+                          '16',
+                          '26',
+                          '58',
+                          '180'
+                      ),
+                      value='16',
+                      clearable=False
+                  ),
+                  drc.NamedDropdown(
                       name='Layout',
                       id='dropdown-layout',
                       options=drc.DropdownOptionsList(
@@ -200,18 +213,6 @@ app.layout = html.Div([dcc.Tabs([
                       value='selection',
                       clearable=False
                   ),
-                  drc.NamedDropdown(
-                      name='Starting Level',
-                      id='dropdown-level',
-                      options=drc.DropdownOptionsList(
-                          '16',
-                          '26',
-                          '58',
-                          '180'
-                      ),
-                      value='16',
-                      clearable=False
-                  ),
               ]),
           ]),
       ],style={'width': '30%'}
@@ -219,26 +220,43 @@ app.layout = html.Div([dcc.Tabs([
     ],style = {'display' : 'flex'}),
 
     html.Div(className='nodeInfo-sankey', children=[
-        dcc.Graph(style={'width':'50%'}),
-        dcc.Graph(style={'width':'50%'}),
+        dcc.Graph(style={'width':'100%'}, id="node-sanky"),
     ],style={'display':"flex"}),
-
+    
     html.Div(className='adj-metrix', children=[
-        dcc.Graph(style={'width':'100%'})
+        dcc.Graph(style={'width':'100%'}, id="adj-heatmap")
     ],style={'display':"flex"}),
 
-    html.Div(className='centrailities', children=[
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
+    html.Div(className='nodeInfo-donut', children=[
+        dcc.Graph(style={'width':'50%'}, id="node-donut-inflow"),
+        dcc.Graph(style={'width':'50%'}, id="node-donut-outflow")
+    ],style={'display':"flex"}),
+
+    html.Div(className='overAll-Degree-centrailities', children=[
+        dcc.Graph(style={'width':'100%'}, id="all-degree-centrality"),
+    ],style={'display':"flex"}),
+
+    html.Div(className='Degree-centrailities', children=[
+        dcc.Graph(style={'width':'50%'}, id="in-degree-centrality"),
+        dcc.Graph(style={'width':'50%'}, id="out-degree-centrality"),
+    ],style={'display':"flex"}),
+
+    html.Div(className='eigenVector-centrailities', children=[
+        dcc.Graph(style={'width':'50%'}, id="eigen-vector-centralities"),
+        dcc.Graph(style={'width':'50%'}, id="pageRank"),
+    ],style={'display':"flex"}),
+
+    html.Div(className='closeness-betweeness-centrailities', children=[
+        dcc.Graph(style={'width':'50%'}, id="closeness-centralities"),
+        dcc.Graph(style={'width':'50%'}, id="betweeness-centralities"),
     ],style={'display':"flex"}),
 
     html.Div(className='cluster', children=[
-        dcc.Graph(style={'width':'100%'}),
+        dcc.Graph(style={'width':'100%'}, id="clustering-coefficient"),
     ],style={'display':"flex"}),
 
     ]),
+    
     dcc.Tab(label='Temporal Visualization', children=[
         html.H1("Under Development",style={"text-align":"center"})
     ])
@@ -248,12 +266,48 @@ app.layout = html.Div([dcc.Tabs([
 
 ############################################ Call Back ###################################################
 
+@app.callback(Output('network-stat', 'children'),
+              [Input('IO-network', 'elements')])
+def update_natwork_stats(elements):
+    df_cyto = get_edge_df_from_cyto(elements)
+    df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+    df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+    G_cyto = nx.from_pandas_edgelist(df_cyto,
+        'Buyer_name', 
+        'Seller_name', 
+        ['Amount','Weight'],
+        create_using=nx.DiGraph())
+
+
+    network_diameter = nx.diameter(G_cyto)
+    network_density = nx.density(G_cyto)
+    network_average_shortest_path_length = nx.average_shortest_path_length(G_cyto)
+    network_average_clustering = nx.average_clustering(G_cyto)
+
+    network_diameter = round(network_diameter, 2)
+    network_density = round(network_density, 2)
+    network_average_shortest_path_length = round(network_average_shortest_path_length, 2)
+    network_average_clustering = round(network_average_clustering, 2)
+
+    updated_network_stats = [
+        html.H3(f"Network Diameter: {network_diameter}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                            "margin-left": "15px"}),
+        html.H3(f"Network Density: {network_density}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                            "margin-left": "15px"}),
+        html.H3(f"Average Shortest Path: {network_average_shortest_path_length}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                                 "margin-left": "15px"}),
+        html.H3(f"Average Cluster Coeficient: {network_average_clustering}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                                      "margin-left": "15px"})
+    ]
+
+    return updated_network_stats
+
 
 @app.callback(Output('IO-network', 'layout'),
               [Input('dropdown-layout', 'value')])
 def update_cytoscape_layout(layout):
     return {'name': layout}
-
 
 @app.callback(Output('IO-network', 'stylesheet'),
               Output('IO-network', 'elements'),
@@ -610,8 +664,343 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
             new_cytoElement.append(temp_dict)
         
         return default_stylesheet,new_cytoElement
-        
 
+
+@app.callback(Output('node-sanky', 'figure'),
+              Output('node-donut-inflow', 'figure'),
+              Output('node-donut-outflow', 'figure'),
+              Output('all-degree-centrality', 'figure'),
+              Output('in-degree-centrality', 'figure'),
+              Output('out-degree-centrality', 'figure'),
+              Output('eigen-vector-centralities', 'figure'),
+              Output('pageRank', 'figure'),
+              Output('closeness-centralities', 'figure'),
+              Output('betweeness-centralities', 'figure'),
+              Output('clustering-coefficient', 'figure'),
+              Output('adj-heatmap', 'figure'),
+              [Input('IO-network', 'tapNode')],
+              [State('IO-network', 'elements')])
+
+def generate_charts_selectedNode(node,elements):
+    if not node: # no node selected
+        df_cyto = get_edge_df_from_cyto(elements)
+        df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+        df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+        G_cyto = nx.from_pandas_edgelist(df_cyto, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
+
+        # defualt chart of all_degree_centrality
+        
+        degree_centrality = nx.degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(degree_centrality.keys()))
+
+        DeCen_fig = go.Figure(data=[go.Bar(
+            y=list(degree_centrality.keys()),
+            x=list(degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+
+        DeCen_fig.update_layout(title_text='Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of in_degree_centrality
+        
+        in_degree_centrality = nx.in_degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(in_degree_centrality.keys()))
+
+        DeInCen_fig = go.Figure(data=[go.Bar(
+            y=list(in_degree_centrality.keys()),
+            x=list(in_degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        DeInCen_fig.update_layout(title_text='In-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of out_degree_centrality
+        
+        out_degree_centrality = nx.out_degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(out_degree_centrality.keys()))
+
+        DeOutCen_fig = go.Figure(data=[go.Bar(
+            y=list(out_degree_centrality.keys()),
+            x=list(out_degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of eigenvector_centrality
+        
+        eigenvector_centrality = nx.eigenvector_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(eigenvector_centrality.keys()))
+
+        eigen_fig = go.Figure(data=[go.Bar(
+            y=list(eigenvector_centrality.keys()),
+            x=list(eigenvector_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        eigen_fig.update_layout(title_text='Eigenvector Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of pagerank
+        
+        pagerank = nx.pagerank(G_cyto)
+        colors = ['lightslategray',] * (len(pagerank.keys()))
+
+        pagerank_fig = go.Figure(data=[go.Bar(
+            y=list(pagerank.keys()),
+            x=list(pagerank.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of closeness centralities
+        
+        closeness_centrality = nx.closeness_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(closeness_centrality.keys()))
+
+        closeness_fig = go.Figure(data=[go.Bar(
+            y=list(closeness_centrality.keys()),
+            x=list(closeness_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        closeness_fig.update_layout(title_text='Closeness Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of betweenes centralities
+        
+        betweenness_centrality = nx.betweenness_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(betweenness_centrality.keys()))
+
+        betweenness_fig = go.Figure(data=[go.Bar(
+            y=list(betweenness_centrality.keys()),
+            x=list(betweenness_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of clustering centralities
+        
+        clustering = nx.clustering(G_cyto)
+        colors = ['lightslategray',] * (len(clustering.keys()))
+
+        clustering_fig = go.Figure(data=[go.Bar(
+            y=list(clustering.keys()),
+            x=list(clustering.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of adj heatmep
+
+        adj = nx.to_pandas_adjacency(G_cyto,weight="Amount")
+        adj_fig = px.imshow(adj,
+                labels=dict(x="Seller", y="Buyer", color="Amount"),
+                text_auto=True, aspect="auto")
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig, clustering_fig, adj_fig
+
+    else:
+        selected_id = node["data"]["id"]
+        selected_name = node["data"]["label"]
+
+        df_cyto = get_edge_df_from_cyto(elements)
+        df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+        df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+        G_cyto = nx.from_pandas_edgelist(df_cyto, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
+
+        df_selected = df_cyto[(df_cyto["Buyer"] == selected_id) | (df_cyto["Seller"] == selected_id)]
+
+        G_cyto_selected = nx.from_pandas_edgelist(df_selected, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
+
+        if df_selected.shape[0] == 0:
+            return empty_fig, empty_fig, empty_fig
+        else:
+            # sankey
+            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky plot of {selected_name}')
+
+            sank_fig = go.Figure(sankDict)
+
+            # donut inflow
+            money_inflow_df = df_selected[df_selected["Seller_name"] == selected_name].groupby(["Buyer_name","Seller_name"]).sum().reset_index()
+
+            money_inflow_df.sort_values("Amount",ascending=False,inplace=True)
+            money_inflow_df.iloc[5:,0] = "Other"
+
+            sum_inflow = money_inflow_df["Amount"].sum()
+            sum_inflow = "{:,}".format(sum_inflow)
+
+            money_inflow_df.rename(columns={"Buyer_name":"Buyer Name",},inplace=True)
+
+            donut_inflow_fig = px.pie(money_inflow_df, values="Amount", names="Buyer Name", hole=.65)
+            donut_inflow_fig.update_layout(title_text=f"Money Inflow of {selected_name}",
+                            annotations=[dict(text=f'฿{sum_inflow}', x=0.5, y=0.5, font_size=20, showarrow=False)])
+
+            # donut outflow
+            money_outflow_df = df_selected[df_selected["Buyer_name"] == selected_name].groupby(["Buyer_name","Seller_name"]).sum().reset_index()
+
+            money_outflow_df.sort_values("Amount",ascending=False,inplace=True)
+            money_outflow_df.iloc[5:,1] = "Other"
+
+            sum_outflow = money_outflow_df["Amount"].sum()
+            sum_outflow = "{:,}".format(sum_outflow)
+
+            money_outflow_df.rename(columns={"Seller_name":"Seller Name",},inplace=True)
+
+            donut_outflow_fig = px.pie(money_outflow_df, values="Amount", names="Seller Name", hole=.65)
+            donut_outflow_fig.update_layout(title_text=f"Money Outflow of {selected_name}",
+                            annotations=[dict(text=f'฿{sum_outflow}', x=0.5, y=0.5, font_size=20, showarrow=False)])
+
+            
+            # centralities
+
+            degree_centrality = nx.degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(degree_centrality.keys()))
+            colors[list(degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeCen_fig = go.Figure(data=[go.Bar(
+                y=list(degree_centrality.keys()),
+                x=list(degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeCen_fig.update_layout(title_text='Degree Centralities',yaxis=dict(autorange="reversed"))
+
+            in_degree_centrality = nx.in_degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(in_degree_centrality.keys()))
+            colors[list(in_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeInCen_fig = go.Figure(data=[go.Bar(
+                y=list(in_degree_centrality.keys()),
+                x=list(in_degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeInCen_fig.update_layout(title_text='In-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+            out_degree_centrality = nx.out_degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(out_degree_centrality.keys()))
+            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeOutCen_fig = go.Figure(data=[go.Bar(
+                y=list(out_degree_centrality.keys()),
+                x=list(out_degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+            # eigenvector_centrality
+        
+            eigenvector_centrality = nx.eigenvector_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(eigenvector_centrality.keys()))
+            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            eigen_fig = go.Figure(data=[go.Bar(
+                y=list(eigenvector_centrality.keys()),
+                x=list(eigenvector_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            eigen_fig.update_layout(title_text='Eigenvector Centralities',yaxis=dict(autorange="reversed"))
+
+            # pagerank
+            
+            pagerank = nx.pagerank(G_cyto)
+            colors = ['lightslategray',] * (len(pagerank.keys()))
+            colors[list(pagerank.keys()).index(selected_name)] = 'crimson'
+
+            pagerank_fig = go.Figure(data=[go.Bar(
+                y=list(pagerank.keys()),
+                x=list(pagerank.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
+
+            # closeness centralities
+        
+            closeness_centrality = nx.closeness_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(closeness_centrality.keys()))
+            colors[list(closeness_centrality.keys()).index(selected_name)] = 'crimson'
+
+            closeness_fig = go.Figure(data=[go.Bar(
+                y=list(closeness_centrality.keys()),
+                x=list(closeness_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            closeness_fig.update_layout(title_text='Closeness Centralities',yaxis=dict(autorange="reversed"))
+
+            # betweenes centralities
+            
+            betweenness_centrality = nx.betweenness_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(betweenness_centrality.keys()))
+            colors[list(betweenness_centrality.keys()).index(selected_name)] = 'crimson'
+
+            betweenness_fig = go.Figure(data=[go.Bar(
+                y=list(betweenness_centrality.keys()),
+                x=list(betweenness_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
+
+            # clustering centralities
+        
+            clustering = nx.clustering(G_cyto)
+            colors = ['lightslategray',] * (len(clustering.keys()))
+            colors[list(clustering.keys()).index(selected_name)] = 'crimson'
+
+            clustering_fig = go.Figure(data=[go.Bar(
+                y=list(clustering.keys()),
+                x=list(clustering.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
+
+            # adj heatmep
+
+            adj = nx.to_pandas_adjacency(G_cyto_selected,weight="Amount")
+            adj_fig = px.imshow(adj,
+                    labels=dict(x="Seller", y="Buyer", color="Amount"),
+                    text_auto=True, aspect="auto")
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig,clustering_fig, adj_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
