@@ -223,13 +223,16 @@ def update_natwork_stats(elements):
         ['Amount','Weight'],
         create_using=nx.DiGraph())
 
-
-    network_diameter = nx.diameter(G_cyto)
+    try:
+        network_diameter = nx.diameter(G_cyto)
+        network_diameter = round(network_diameter, 2)
+    except:
+        network_diameter = "∞"
+        
     network_density = nx.density(G_cyto)
     network_average_shortest_path_length = nx.average_shortest_path_length(G_cyto)
     network_average_clustering = nx.average_clustering(G_cyto)
 
-    network_diameter = round(network_diameter, 2)
     network_density = round(network_density, 2)
     network_average_shortest_path_length = round(network_average_shortest_path_length, 2)
     network_average_clustering = round(network_average_clustering, 2)
