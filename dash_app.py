@@ -222,6 +222,10 @@ app.layout = html.Div([dcc.Tabs([
     html.Div(className='nodeInfo-sankey', children=[
         dcc.Graph(style={'width':'100%'}, id="node-sanky"),
     ],style={'display':"flex"}),
+    
+    html.Div(className='adj-metrix', children=[
+        dcc.Graph(style={'width':'100%'}, id="adj-heatmap")
+    ],style={'display':"flex"}),
 
     html.Div(className='nodeInfo-donut', children=[
         dcc.Graph(style={'width':'50%'}, id="node-donut-inflow"),
@@ -249,10 +253,6 @@ app.layout = html.Div([dcc.Tabs([
 
     html.Div(className='cluster', children=[
         dcc.Graph(style={'width':'100%'}, id="clustering-coefficient"),
-    ],style={'display':"flex"}),
-
-    html.Div(className='adj-metrix', children=[
-        dcc.Graph(style={'width':'100%'})
     ],style={'display':"flex"}),
 
     ]),
@@ -641,6 +641,7 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
               Output('closeness-centralities', 'figure'),
               Output('betweeness-centralities', 'figure'),
               Output('clustering-coefficient', 'figure'),
+              Output('adj-heatmap', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
@@ -769,7 +770,14 @@ def generate_charts_selectedNode(node,elements):
 
         clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
 
-        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig, clustering_fig
+        # defualt chart of adj heatmep
+
+        adj = nx.to_pandas_adjacency(G_cyto,weight="Amount")
+        adj_fig = px.imshow(adj,
+                labels=dict(x="Seller", y="Buyer", color="Amount"),
+                text_auto=True, aspect="auto")
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig, clustering_fig, adj_fig
 
     else:
         selected_id = node["data"]["id"]
@@ -786,6 +794,12 @@ def generate_charts_selectedNode(node,elements):
                             create_using=nx.DiGraph())
 
         df_selected = df_cyto[(df_cyto["Buyer"] == selected_id) | (df_cyto["Seller"] == selected_id)]
+
+        G_cyto_selected = nx.from_pandas_edgelist(df_selected, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
 
         if df_selected.shape[0] == 0:
             return empty_fig, empty_fig, empty_fig
@@ -942,8 +956,15 @@ def generate_charts_selectedNode(node,elements):
 
             clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
 
+            # adj heatmep
 
-            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig,clustering_fig
+            adj = nx.to_pandas_adjacency(G_cyto_selected,weight="Amount")
+            adj_fig = px.imshow(adj,
+                    labels=dict(x="Seller", y="Buyer", color="Amount"),
+                    text_auto=True, aspect="auto")
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig,clustering_fig, adj_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
