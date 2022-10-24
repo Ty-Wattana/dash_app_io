@@ -228,25 +228,29 @@ app.layout = html.Div([dcc.Tabs([
         dcc.Graph(style={'width':'50%'}, id="node-donut-outflow")
     ],style={'display':"flex"}),
 
-    html.Div(className='overAllcentrailities', children=[
+    html.Div(className='overAll-Degree-centrailities', children=[
         dcc.Graph(style={'width':'100%'}, id="all-degree-centrality"),
     ],style={'display':"flex"}),
 
-    html.Div(className='centrailities', children=[
+    html.Div(className='Degree-centrailities', children=[
         dcc.Graph(style={'width':'50%'}, id="in-degree-centrality"),
         dcc.Graph(style={'width':'50%'}, id="out-degree-centrality"),
+    ],style={'display':"flex"}),
+
+    html.Div(className='eigenVector-centrailities', children=[
+        dcc.Graph(style={'width':'50%'}, id="eigen-vector-centralities"),
+        dcc.Graph(style={'width':'50%'}, id="pageRank"),
     ],style={'display':"flex"}),
 
     html.Div(className='cluster', children=[
         dcc.Graph(style={'width':'100%'}),
     ],style={'display':"flex"}),
 
-    ]),
-
     html.Div(className='adj-metrix', children=[
         dcc.Graph(style={'width':'100%'})
     ],style={'display':"flex"}),
 
+    ]),
     
     dcc.Tab(label='Temporal Visualization', children=[
         html.H1("Under Development",style={"text-align":"center"})
@@ -627,6 +631,8 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
               Output('all-degree-centrality', 'figure'),
               Output('in-degree-centrality', 'figure'),
               Output('out-degree-centrality', 'figure'),
+              Output('eigen-vector-centralities', 'figure'),
+              Output('pageRank', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
@@ -685,7 +691,35 @@ def generate_charts_selectedNode(node,elements):
 
         DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
 
-        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig
+        # defualt chart of eigenvector_centrality
+        
+        eigenvector_centrality = nx.eigenvector_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(eigenvector_centrality.keys()))
+
+        eigen_fig = go.Figure(data=[go.Bar(
+            y=list(eigenvector_centrality.keys()),
+            x=list(eigenvector_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        eigen_fig.update_layout(title_text='Eigenvector Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of pagerank
+        
+        pagerank = nx.pagerank(G_cyto)
+        colors = ['lightslategray',] * (len(pagerank.keys()))
+
+        pagerank_fig = go.Figure(data=[go.Bar(
+            y=list(pagerank.keys()),
+            x=list(pagerank.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig
     else:
         selected_id = node["data"]["id"]
         selected_name = node["data"]["label"]
@@ -782,8 +816,38 @@ def generate_charts_selectedNode(node,elements):
 
             DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
 
+            # eigenvector_centrality
+        
+            eigenvector_centrality = nx.eigenvector_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(eigenvector_centrality.keys()))
+            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
 
-            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig
+            eigen_fig = go.Figure(data=[go.Bar(
+                y=list(eigenvector_centrality.keys()),
+                x=list(eigenvector_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            eigen_fig.update_layout(title_text='Eigenvector Centralities',yaxis=dict(autorange="reversed"))
+
+            # pagerank
+            
+            pagerank = nx.pagerank(G_cyto)
+            colors = ['lightslategray',] * (len(pagerank.keys()))
+            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            pagerank_fig = go.Figure(data=[go.Bar(
+                y=list(pagerank.keys()),
+                x=list(pagerank.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            pagerank_fig.update_layout(title_text='Page Rank Centralities',yaxis=dict(autorange="reversed"))
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
