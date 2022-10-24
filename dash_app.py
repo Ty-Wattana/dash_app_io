@@ -153,7 +153,7 @@ app.layout = html.Div([dcc.Tabs([
     dcc.Tab(label='Spatial Visualization', children=[
     html.H1("Input-Output Economic Network (2015)",style={"text-align":"center"}),
 
-    html.Div(className='network-stat', children=[
+    html.Div(id='network-stat', children=[
         html.H3("Network Diameter: ",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
                                             "margin-left": "15px"}),
         html.H3("Network Density: ",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
@@ -266,12 +266,48 @@ app.layout = html.Div([dcc.Tabs([
 
 ############################################ Call Back ###################################################
 
+@app.callback(Output('network-stat', 'children'),
+              [Input('IO-network', 'elements')])
+def update_natwork_stats(elements):
+    df_cyto = get_edge_df_from_cyto(elements)
+    df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+    df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+    G_cyto = nx.from_pandas_edgelist(df_cyto,
+        'Buyer_name', 
+        'Seller_name', 
+        ['Amount','Weight'],
+        create_using=nx.DiGraph())
+
+
+    network_diameter = nx.diameter(G_cyto)
+    network_density = nx.density(G_cyto)
+    network_average_shortest_path_length = nx.average_shortest_path_length(G_cyto)
+    network_average_clustering = nx.average_clustering(G_cyto)
+
+    network_diameter = round(network_diameter, 2)
+    network_density = round(network_density, 2)
+    network_average_shortest_path_length = round(network_average_shortest_path_length, 2)
+    network_average_clustering = round(network_average_clustering, 2)
+
+    updated_network_stats = [
+        html.H3(f"Network Diameter: {network_diameter}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                            "margin-left": "15px"}),
+        html.H3(f"Network Density: {network_density}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                            "margin-left": "15px"}),
+        html.H3(f"Average Shortest Path: {network_average_shortest_path_length}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                                 "margin-left": "15px"}),
+        html.H3(f"Average Cluster Coeficient: {network_average_clustering}",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
+                                                      "margin-left": "15px"})
+    ]
+
+    return updated_network_stats
+
 
 @app.callback(Output('IO-network', 'layout'),
               [Input('dropdown-layout', 'value')])
 def update_cytoscape_layout(layout):
     return {'name': layout}
-
 
 @app.callback(Output('IO-network', 'stylesheet'),
               Output('IO-network', 'elements'),
