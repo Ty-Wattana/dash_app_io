@@ -248,7 +248,7 @@ app.layout = html.Div([dcc.Tabs([
     ],style={'display':"flex"}),
 
     html.Div(className='cluster', children=[
-        dcc.Graph(style={'width':'100%'}),
+        dcc.Graph(style={'width':'100%'}, id="clustering-coefficient"),
     ],style={'display':"flex"}),
 
     html.Div(className='adj-metrix', children=[
@@ -640,6 +640,7 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
               Output('pageRank', 'figure'),
               Output('closeness-centralities', 'figure'),
               Output('betweeness-centralities', 'figure'),
+              Output('clustering-coefficient', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
@@ -754,7 +755,22 @@ def generate_charts_selectedNode(node,elements):
 
         betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
 
-        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig
+        # defualt chart of clustering centralities
+        
+        clustering = nx.clustering(G_cyto)
+        colors = ['lightslategray',] * (len(clustering.keys()))
+
+        clustering_fig = go.Figure(data=[go.Bar(
+            y=list(clustering.keys()),
+            x=list(clustering.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig, clustering_fig
+
     else:
         selected_id = node["data"]["id"]
         selected_name = node["data"]["label"]
@@ -911,8 +927,23 @@ def generate_charts_selectedNode(node,elements):
 
             betweenness_fig.update_layout(title_text='Betweenness Centralities',yaxis=dict(autorange="reversed"))
 
+            # clustering centralities
+        
+            clustering = nx.clustering(G_cyto)
+            colors = ['lightslategray',] * (len(clustering.keys()))
+            colors[list(clustering.keys()).index(selected_name)] = 'crimson'
 
-            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig
+            clustering_fig = go.Figure(data=[go.Bar(
+                y=list(clustering.keys()),
+                x=list(clustering.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            clustering_fig.update_layout(title_text='Clustering Coefficient',yaxis=dict(autorange="reversed"))
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig, eigen_fig, pagerank_fig,closeness_fig,betweenness_fig,clustering_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
