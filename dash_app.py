@@ -228,11 +228,13 @@ app.layout = html.Div([dcc.Tabs([
         dcc.Graph(style={'width':'50%'}, id="node-donut-outflow")
     ],style={'display':"flex"}),
 
+    html.Div(className='overAllcentrailities', children=[
+        dcc.Graph(style={'width':'100%'}, id="all-degree-centrality"),
+    ],style={'display':"flex"}),
+
     html.Div(className='centrailities', children=[
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
-        dcc.Graph(style={'width':'25%'}),
+        dcc.Graph(style={'width':'50%'}, id="in-degree-centrality"),
+        dcc.Graph(style={'width':'50%'}, id="out-degree-centrality"),
     ],style={'display':"flex"}),
 
     html.Div(className='cluster', children=[
@@ -622,12 +624,68 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
 @app.callback(Output('node-sanky', 'figure'),
               Output('node-donut-inflow', 'figure'),
               Output('node-donut-outflow', 'figure'),
+              Output('all-degree-centrality', 'figure'),
+              Output('in-degree-centrality', 'figure'),
+              Output('out-degree-centrality', 'figure'),
               [Input('IO-network', 'tapNode')],
               [State('IO-network', 'elements')])
 
 def generate_charts_selectedNode(node,elements):
     if not node: # no node selected
-        return empty_fig, empty_fig, empty_fig
+        df_cyto = get_edge_df_from_cyto(elements)
+        df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
+        df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+        G_cyto = nx.from_pandas_edgelist(df_cyto, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
+
+        # defualt chart of all_degree_centrality
+        
+        degree_centrality = nx.degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(degree_centrality.keys()))
+
+        DeCen_fig = go.Figure(data=[go.Bar(
+            y=list(degree_centrality.keys()),
+            x=list(degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+
+        DeCen_fig.update_layout(title_text='Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of in_degree_centrality
+        
+        in_degree_centrality = nx.in_degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(in_degree_centrality.keys()))
+
+        DeInCen_fig = go.Figure(data=[go.Bar(
+            y=list(in_degree_centrality.keys()),
+            x=list(in_degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        DeInCen_fig.update_layout(title_text='In-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        # defualt chart of out_degree_centrality
+        
+        out_degree_centrality = nx.out_degree_centrality(G_cyto)
+        colors = ['lightslategray',] * (len(out_degree_centrality.keys()))
+
+        DeOutCen_fig = go.Figure(data=[go.Bar(
+            y=list(out_degree_centrality.keys()),
+            x=list(out_degree_centrality.values()),
+            marker_color=colors,
+            orientation='h'
+        )])
+
+        DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+        return empty_fig, empty_fig, empty_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig
     else:
         selected_id = node["data"]["id"]
         selected_name = node["data"]["label"]
@@ -635,6 +693,12 @@ def generate_charts_selectedNode(node,elements):
         df_cyto = get_edge_df_from_cyto(elements)
         df_cyto['Buyer_name'] = df_cyto["Buyer"].apply(get_node_name)
         df_cyto['Seller_name'] = df_cyto["Seller"].apply(get_node_name)
+
+        G_cyto = nx.from_pandas_edgelist(df_cyto, 
+                            'Buyer_name', 
+                            'Seller_name', 
+                            ['Amount','Weight'],
+                            create_using=nx.DiGraph())
 
         df_selected = df_cyto[(df_cyto["Buyer"] == selected_id) | (df_cyto["Seller"] == selected_id)]
 
@@ -676,8 +740,50 @@ def generate_charts_selectedNode(node,elements):
             donut_outflow_fig.update_layout(title_text=f"Money Outflow of {selected_name}",
                             annotations=[dict(text=f'฿{sum_outflow}', x=0.5, y=0.5, font_size=20, showarrow=False)])
 
+            
+            # centralities
 
-            return sank_fig, donut_inflow_fig, donut_outflow_fig
+            degree_centrality = nx.degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(degree_centrality.keys()))
+            colors[list(degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeCen_fig = go.Figure(data=[go.Bar(
+                y=list(degree_centrality.keys()),
+                x=list(degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeCen_fig.update_layout(title_text='Degree Centralities',yaxis=dict(autorange="reversed"))
+
+            in_degree_centrality = nx.in_degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(in_degree_centrality.keys()))
+            colors[list(in_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeInCen_fig = go.Figure(data=[go.Bar(
+                y=list(in_degree_centrality.keys()),
+                x=list(in_degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeInCen_fig.update_layout(title_text='In-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+            out_degree_centrality = nx.out_degree_centrality(G_cyto)
+            colors = ['lightslategray',] * (len(out_degree_centrality.keys()))
+            colors[list(out_degree_centrality.keys()).index(selected_name)] = 'crimson'
+
+            DeOutCen_fig = go.Figure(data=[go.Bar(
+                y=list(out_degree_centrality.keys()),
+                x=list(out_degree_centrality.values()),
+                marker_color=colors,
+                orientation='h'
+            )])
+
+            DeOutCen_fig.update_layout(title_text='Out-Degree Centralities',yaxis=dict(autorange="reversed"))
+
+
+            return sank_fig, donut_inflow_fig, donut_outflow_fig, DeCen_fig, DeInCen_fig, DeOutCen_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
