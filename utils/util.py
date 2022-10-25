@@ -24,9 +24,9 @@ empty_fig = {
     }
 }
 
-irr_node = ['190','201','202','203','204','209','210','301','302','303','304',
+irr_node = ['190','201','202','203','204','209','210','220','230','301','302','303','304',
             '305','306','309','310','401','402','403','404','409','501','502', '503',
-            '509','600','700']
+            '509','600','700','800']
 
 
 default_stylesheet = [
@@ -64,10 +64,6 @@ styles = {
 
 nodes = pd.read_excel('io_data/node.xlsx', dtype={'id':'object', 'id58':'object','id26':'object','id16':'object'})
 
-irr_node = ['190','201','202','203','204','209','210','301','302','303','304',
-            '305','306','309','310','401','402','403','404','409','501','502', '503',
-            '509','600','700']
-
 nodes = nodes[~nodes['id'].isin(irr_node)]
 nodes['id58'] = nodes['id58'] + "_58"
 nodes['id26'] = nodes['id26'] + "_26"
@@ -75,6 +71,10 @@ nodes['id16'] = nodes['id16'] + "_16"
 
 
 def MAP(x,level):
+  try:
+    nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
+  except:
+    print(x)
   return nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
 
 def get_start_level(io_deepest,selected_level="16"):
