@@ -392,14 +392,40 @@ def generate_stylesheet_expandNode(node,year,start_level,mode,elements):
 
         if node['data'].get('selected') == 1:
             try:
-                idx = elements.index({"data":node['data']})
+                temp_node_dict = node['data'].copy()
+                check_dic = {"data":temp_node_dict}
+                del check_dic["data"]["selected"]
+
+                if check_dic in elements:
+                    try:
+                        idx = elements.index(check_dic)
+                    except:
+                        idx = elements.index({"data":node['data']})
+                else:
+                    idx = elements.index({"data":node['data']})
             except:
                 return default_stylesheet, elements
             elements[idx]['data']['selected'] = 0
         else:
             try:
-                idx = elements.index({"data":node['data']})
+                if "selected" in node['data']:
+                    temp_node_dict = node['data'].copy()
+                    check_dic = {"data":temp_node_dict}
+                    del check_dic["data"]["selected"]
+
+                    if check_dic in elements:
+                        try:
+                            idx = elements.index(check_dic)
+                        except:
+                            idx = elements.index({"data":node['data']})
+                    else:
+                        idx = elements.index({"data":node['data']})
+                else:
+                    idx = elements.index({"data":node['data']})
             except:
+                print(check_dic)
+                print({"data":node['data']})
+                print(elements[0])
                 return default_stylesheet, elements
             elements[idx]['data']['selected'] = 1
         
