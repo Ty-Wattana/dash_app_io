@@ -1,6 +1,6 @@
 import dash
 import dash_cytoscape as cyto
-from dash import Dash, html, dcc
+from dash import Dash, html, dcc, ctx
 from dash.dependencies import Input, Output, State
 import dash_reusable_components as drc
 
@@ -95,7 +95,9 @@ app = Dash(__name__)
 application = app.server
 app.layout = html.Div([dcc.Tabs([
     dcc.Tab(label='Spatial Visualization', children=[
-    html.H1("Input-Output Economic Network (2015)",style={"text-align":"center"}),
+    html.Div(id='title', children=[
+        html.H1("Input-Output Economic Network (2015)",style={"text-align":"center"}),
+    ]),
 
     html.Div(id='network-stat', children=[
         html.H3("Network Diameter: ",style={"text-align":"center","border":"2px black solid","padding":"10px",'width':'20%',
@@ -121,7 +123,7 @@ app.layout = html.Div([dcc.Tabs([
             2005:"2005",
             2010:"2010",
             2015:"2015"
-    }
+    }, id="time-slider"
     ),
 
     html.Br(),
@@ -228,6 +230,11 @@ app.layout = html.Div([dcc.Tabs([
 
 ############################################ Call Back ###################################################
 
+@app.callback(Output('title', 'children'),
+              [Input('time-slider', 'value')])
+def change_title(year):
+    return html.H1(f"Input-Output Economic Network ({year})",style={"text-align":"center"})
+
 @app.callback(Output('network-stat', 'children'),
               [Input('IO-network', 'elements')])
 def update_natwork_stats(elements):
@@ -277,16 +284,67 @@ def update_cytoscape_layout(layout):
 @app.callback(Output('IO-network', 'stylesheet'),
               Output('IO-network', 'elements'),
               [Input('IO-network', 'tapNode')],
+              [Input('time-slider', 'value')],
               [Input('dropdown-level', 'value')],
               [Input('dropdown-mode', 'value')],
-              [State('IO-network', 'elements')])
+              [Input('IO-network', 'elements')])
 
-def generate_stylesheet_expandNode(node,start_level,mode,elements):
+def generate_stylesheet_expandNode(node,year,start_level,mode,elements):
+    trigger = ctx.triggered_id
+
+    # year change set to cytoscape default value
+    if trigger == "time-slider":
+        io_table_selected = data_preprocessing(irr_node,year)
+        io_start = get_start_level(io_table_selected,start_level)
+        G_start = nx.from_pandas_edgelist(io_start, 
+                                    'Buyer', 
+                                    'Seller', 
+                                    ['weight','weight_norm'],
+                                    create_using=nx.DiGraph())
+
+            # get dash cytoscape elements
+        cyto_start = []
+        edge_weight = nx.get_edge_attributes(G_start,"weight_norm")
+        amount = nx.get_edge_attributes(G_start,"weight")
+
+        if start_level != "16" and start_level != "26" and start_level != "58":
+
+            for index,row in nodes.iterrows():
+                temp_dict = {}
+                temp_dict['data'] = {}
+                temp_dict['data']['id'] = row["id"]
+                temp_dict['data']['label'] = row['name']
+                temp_dict['data']['level'] = start_level
+                cyto_start.append(temp_dict)
+
+        else:
+            nodes_cyto = nodes.groupby([f'id{start_level}',f'name{start_level}']).mean().reset_index()
+            for index,row in nodes_cyto.iterrows():
+                temp_dict = {}
+                temp_dict['data'] = {}
+                temp_dict['data']['id'] = row[f'id{start_level}']
+                temp_dict['data']['label'] = row[f'name{start_level}']
+                temp_dict['data']['level'] = start_level
+                cyto_start.append(temp_dict)
+
+        for edge in G_start.edges:
+            temp_dict = {}
+
+            temp_dict['data'] = {}
+            temp_dict['data']['source'] = edge[0]
+            temp_dict['data']['target'] = edge[1]
+            temp_dict['data']['weight'] = edge_weight[edge]
+            temp_dict['data']['amount'] = amount[edge]
+
+            cyto_start.append(temp_dict)
+        
+        return default_stylesheet,cyto_start
+
     if mode == "selection":
         if not node: # no node selected
             # reconstruct cyto element with start level
-
-            io_start = get_start_level(io_table,start_level)
+            io_table_selected = data_preprocessing(irr_node,year)
+            io_start = get_start_level(io_table_selected,start_level)
 
             G_start = nx.from_pandas_edgelist(io_start, 
                                     'Buyer', 
@@ -437,7 +495,9 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
         if not node: # no node selected
             # reconstruct cyto element with start level
 
-            io_start = get_start_level(io_table,start_level)
+            io_table_selected = data_preprocessing(irr_node,year)
+
+            io_start = get_start_level(io_table_selected,start_level)
 
             G_start = nx.from_pandas_edgelist(io_start, 
                                     'Buyer', 
@@ -491,7 +551,8 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
 
         expandedID_deepest = list(nodes.loc[nodes[f"id{selected_level}"] == selected_id,"id"])
         
-        io_selected = io_table.copy()
+        io_table_selected = data_preprocessing(irr_node,year)
+        io_selected = io_table_selected.copy()
         node_selected = nodes.copy()
 
         # delete selected node and associated links from cytoscape element
@@ -645,7 +706,7 @@ def generate_stylesheet_expandNode(node,start_level,mode,elements):
               Output('clustering-coefficient', 'figure'),
               Output('adj-heatmap', 'figure'),
               [Input('IO-network', 'tapNode')],
-              [State('IO-network', 'elements')])
+              [Input('IO-network', 'elements')])
 
 def generate_charts_selectedNode(node,elements):
     if not node: # no node selected
