@@ -91,7 +91,7 @@ for edge in G.edges:
 ############################################ dash app ##################################################
 
 app = Dash(__name__)
-application = app.server
+server = app.server
 app.layout = html.Div([dcc.Tabs([
     dcc.Tab(label='Spatial Visualization', children=[
     html.Div(id='title', children=[
