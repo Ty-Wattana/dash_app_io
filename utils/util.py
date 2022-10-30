@@ -2,11 +2,67 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-nodes = pd.read_excel('io_data/node.xlsx', dtype={'id':'object', 'id58':'object','id26':'object','id16':'object'})
+empty_fig = {
+    "layout": {
+        "xaxis": {
+            "visible": False
+        },
+        "yaxis": {
+            "visible": False
+        },
+        "annotations": [
+            {
+                "text": "Please Select a Node",
+                "xref": "paper",
+                "yref": "paper",
+                "showarrow": False,
+                "font": {
+                    "size": 28
+                }
+            }
+        ]
+    }
+}
 
-irr_node = ['190','201','202','203','204','209','210','301','302','303','304',
+irr_node = ['190','201','202','203','204','209','210','220','230','301','302','303','304',
             '305','306','309','310','401','402','403','404','409','501','502', '503',
-            '509','600','700']
+            '509','600','700','800']
+
+
+default_stylesheet = [
+    {
+        "selector": 'node',
+        'style': {
+            "label": "data(label)",
+            "color": "black",
+            "text-opacity": 0.65,
+            "font-size": 10,
+        }
+    },
+    {
+        "selector": 'edge',
+        'style': {
+            "curve-style": "bezier",
+            "opacity": 0.3,
+            'target-arrow-shape': 'vee',
+            "width":"data(weight)"
+        }
+    },
+]
+
+styles = {
+    'json-output': {
+        'overflow-y': 'scroll',
+        'height': 'calc(50% - 25px)',
+        'border': 'thin lightgrey solid'
+    },
+    'tab': {
+        'height': 'calc(98vh - 105px)'
+    }
+}
+
+
+nodes = pd.read_excel('io_data/node.xlsx', dtype={'id':'object', 'id58':'object','id26':'object','id16':'object'})
 
 nodes = nodes[~nodes['id'].isin(irr_node)]
 nodes['id58'] = nodes['id58'] + "_58"
@@ -15,7 +71,26 @@ nodes['id16'] = nodes['id16'] + "_16"
 
 
 def MAP(x,level):
+  try:
+    nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
+  except:
+    print(x)
   return nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
+
+def MAP_opt(io_180,level):
+  if level == "180":
+    return io_180
+
+  node_list = list(set(list(io_180["COLUMN"].unique()) + list(io_180["ROW"].unique())))
+
+  map_dict = {}
+  for i in node_list:
+    map_dict[i] = nodes[nodes['id'] == i][f'id{level}'].reset_index(drop=True)[0]
+
+  new_io = io_180.replace({"COLUMN": map_dict, "ROW":map_dict})
+  new_io.rename(columns={"COLUMN":f'COLUMN_{level}',"ROW":f'ROW_{level}'}, inplace=True)
+  
+  return new_io
 
 def get_start_level(io_deepest,selected_level="16"):
   io_newLevel = io_deepest.copy()
@@ -25,8 +100,7 @@ def get_start_level(io_deepest,selected_level="16"):
   if selected_level == "180":
     return io_newLevel
   else:
-    io_newLevel[f'COLUMN_{selected_level}'] = io_newLevel['COLUMN'].apply(MAP, level=selected_level)
-    io_newLevel[f'ROW_{selected_level}'] = io_newLevel['ROW'].apply(MAP, level=selected_level)
+    io_newLevel = MAP_opt(io_newLevel,selected_level)
   
 
   io_newLevel = io_newLevel[[f'COLUMN_{selected_level}',f'ROW_{selected_level}','weight']]
@@ -158,26 +232,28 @@ def genSankey(df,cat_cols=[],value_cols='',title='Sankey Diagram'):
     fig = dict(data=[data], layout=layout)
     return fig
 
+def data_preprocessing(remove_nodes: list, year=2015):
 
+  io_table = pd.read_excel(f'./io_data/IO Table {year}.xlsx', dtype={'ROW':'object','COLUMN':'object'})
+  io_table = io_table[~io_table['ROW'].isin(remove_nodes)]
+  io_table = io_table[~io_table['COLUMN'].isin(remove_nodes)]
 
-empty_fig = {
-    "layout": {
-        "xaxis": {
-            "visible": False
-        },
-        "yaxis": {
-            "visible": False
-        },
-        "annotations": [
-            {
-                "text": "Please Select a Node",
-                "xref": "paper",
-                "yref": "paper",
-                "showarrow": False,
-                "font": {
-                    "size": 28
-                }
-            }
-        ]
-    }
-}
+  io_table = io_table[['COLUMN','ROW','PURCHASER']]
+  io_table.rename(columns = {'PURCHASER':'weight'},inplace=True)
+  io_table['Buyer'] = io_table['COLUMN']
+  io_table['Seller'] = io_table['ROW']
+
+  scaler = MinMaxScaler((1,5))
+  scaler_outlier = MinMaxScaler((5,6))
+
+  # filter outlier
+  Q1 = io_table['weight'].quantile(0.25)
+  Q3 = io_table['weight'].quantile(0.75)
+  IQR = Q3 - Q1    #IQR is interquartile range. 
+
+  filter = (io_table['weight'] >= Q1 - 1.5 * IQR) & (io_table['weight'] <= Q3 + 1.5 *IQR)
+
+  io_table.loc[filter,"weight_norm"] = scaler.fit_transform(io_table.loc[filter][["weight"]])
+  io_table.loc[~filter,"weight_norm"] = scaler_outlier.fit_transform(io_table.loc[~filter][["weight"]])
+
+  return io_table
