@@ -77,6 +77,21 @@ def MAP(x,level):
     print(x)
   return nodes[nodes['id'] == x][f'id{level}'].reset_index(drop=True)[0]
 
+def MAP_opt(io_180,level):
+  if level == "180":
+    return io_180
+
+  node_list = list(set(list(io_180["COLUMN"].unique()) + list(io_180["ROW"].unique())))
+
+  map_dict = {}
+  for i in node_list:
+    map_dict[i] = nodes[nodes['id'] == i][f'id{level}'].reset_index(drop=True)[0]
+
+  new_io = io_180.replace({"COLUMN": map_dict, "ROW":map_dict})
+  new_io.rename(columns={"COLUMN":f'COLUMN_{level}',"ROW":f'ROW_{level}'}, inplace=True)
+  
+  return new_io
+
 def get_start_level(io_deepest,selected_level="16"):
   io_newLevel = io_deepest.copy()
 
@@ -85,8 +100,7 @@ def get_start_level(io_deepest,selected_level="16"):
   if selected_level == "180":
     return io_newLevel
   else:
-    io_newLevel[f'COLUMN_{selected_level}'] = io_newLevel['COLUMN'].apply(MAP, level=selected_level)
-    io_newLevel[f'ROW_{selected_level}'] = io_newLevel['ROW'].apply(MAP, level=selected_level)
+    io_newLevel = MAP_opt(io_newLevel,selected_level)
   
 
   io_newLevel = io_newLevel[[f'COLUMN_{selected_level}',f'ROW_{selected_level}','weight']]

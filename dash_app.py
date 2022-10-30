@@ -18,7 +18,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from utils.util import MAP, get_start_level, get_all_levels, get_edge_df_from_cyto, data_preprocessing
-from utils.util import get_node_name, genSankey, empty_fig, irr_node, default_stylesheet, styles
+from utils.util import get_node_name, genSankey,MAP_opt, empty_fig, irr_node, default_stylesheet, styles
 
 # get data
 nodes = pd.read_excel('./io_data/node.xlsx', dtype={'id':'object', 'id58':'object','id26':'object','id16':'object'})
@@ -33,8 +33,7 @@ io_table = data_preprocessing(irr_node)
 # convert to 16
 
 io_table_16 = io_table.copy()
-io_table_16['COLUMN_16'] = io_table_16['COLUMN'].apply(MAP, level="16")
-io_table_16['ROW_16'] = io_table_16['ROW'].apply(MAP, level="16")
+io_table_16 = MAP_opt(io_table_16,"16")
 
 io_table_16 = io_table_16[['COLUMN_16','ROW_16','weight']]
 io_table_16 = io_table_16.groupby(by=['COLUMN_16','ROW_16'],as_index=False).sum()
