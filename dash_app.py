@@ -183,7 +183,7 @@ app.layout = html.Div([dcc.Tabs([
     ],style = {'display' : 'flex'}),
 
     html.Div(className='nodeInfo-sankey', children=[
-        dcc.Graph(style={'width':'100%'}, id="node-sanky"),
+        dcc.Graph(style={'width':'100%'}, id="node-sankey"),
     ],style={'display':"flex"}),
     
     html.Div(className='adj-metrix', children=[
@@ -718,7 +718,7 @@ def generate_stylesheet_expandNode(node,year,start_level,mode,elements):
         return default_stylesheet,new_cytoElement
 
 
-@app.callback(Output('node-sanky', 'figure'),
+@app.callback(Output('node-sankey', 'figure'),
               Output('node-donut-inflow', 'figure'),
               Output('node-donut-outflow', 'figure'),
               Output('all-degree-centrality', 'figure'),
@@ -893,7 +893,7 @@ def generate_charts_selectedNode(node,elements):
             return empty_fig, empty_fig, empty_fig
         else:
             # sankey
-            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'Sanky plot of {selected_name}')
+            sankDict = genSankey(df_selected,cat_cols=['Buyer_name','Seller_name'],value_cols='Amount',title=f'sankey plot of {selected_name}')
 
             sank_fig = go.Figure(sankDict)
 
